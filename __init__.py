@@ -6,6 +6,8 @@ __docformat__ = 'restructuredtext en'
 
 import os
 import shutil
+import lxml.etree as etree
+import lxml.builder    
 
 
 from calibre.customize.conversion import OutputFormatPlugin, \
@@ -14,11 +16,11 @@ from calibre.ptempfile import TemporaryDirectory, TemporaryFile
 
 NEWLINE_TYPES = ['system', 'unix', 'old_mac', 'windows']
 
-class TXTOutput(OutputFormatPlugin):
+class PEFOutput(OutputFormatPlugin):
 
-    name = 'BBP Output'
+    name = 'PEF Output'
     author = 'Matt Venn'
-    file_type = 'bbp'
+    file_type = 'pef'
 
     options = set([
         OptionRecommendation(name='newline', recommended_value='system',
@@ -78,8 +80,7 @@ class TXTOutput(OutputFormatPlugin):
         from calibre.ebooks.txt.newlines import specified_newlines, TxtNewlines
 
         from calibre.rpdb import set_trace
-        set_trace()
-        opts.max_line_length = 40
+#        set_trace()
 
         if opts.txt_output_formatting.lower() == 'markdown':
             from calibre.ebooks.txt.markdownml import MarkdownMLizer
@@ -97,58 +98,54 @@ class TXTOutput(OutputFormatPlugin):
         txt = specified_newlines(TxtNewlines(opts.newline).newline, txt)
         txt = txt.encode(opts.txt_output_encoding, 'replace')
         
-        from text_to_pef import get_pef
-        pef = get_pef(txt)
+        pef = self.get_pef(txt, TxtNewlines(opts.newline).newline)
 
         if not os.path.exists(os.path.dirname(output_path)) and os.path.dirname(output_path) != '':
             os.makedirs(os.path.dirname(output_path))
 
         import codecs
         fh = codecs.open(output_path, "w", "utf-8")
-        #with open('out.pef','w') as fh:
         fh.write(pef)
 
+    # convert a single alpha, digit or some punctuation to 6 pin braille
+    # http://en.wikipedia.org/wiki/Braille_ASCII#Braille_ASCII_values
+    @staticmethod
+    def alpha_to_pef(alpha):
+        mapping = " A1B'K2L@CIF/MSP\"E3H9O6R^DJG>NTQ,*5<-U8V.%[$+X!&;:4\\0Z7(_?W]#Y)="
+        alpha = alpha.upper()
+        try:
+            pin_num = mapping.index(alpha)
+            return unichr(pin_num+10240)
+        except ValueError as e:
+            print("problem converting [%s] to braille pic" % alpha)
+            return unichr(10240)
 
-class TXTZOutput(TXTOutput):
+    # convert a list of alphas to pef unicode
+    @staticmethod
+    def convert_to_pef(alphas):
+        return map(PEFOutput.alpha_to_pef, alphas)
 
-    name = 'TXTZ Output'
-    author = 'John Schember'
-    file_type = 'txtz'
+    def get_pef(self, txt, newline_char):
+        # setup PEF doc
+        pef = etree.Element('pef')
+        doc = etree.ElementTree(pef)
+        body = etree.SubElement(pef, 'body')
+        volume = etree.SubElement(body, 'volume')
+        section = etree.SubElement(volume, 'section')
+       
+        page_open = False
+        rows = 0
+        for text in txt.split(newline_char):
+            if rows % 4 == 0:
+                page = etree.SubElement(section, 'page')
+            try:
+                row = etree.SubElement(page, 'row')
+                stripped = text.strip()
+                pef = PEFOutput.convert_to_pef(stripped)
+                row.text = ''.join(pef)
+                rows += 1
+            except ValueError as e:
+                print e
+                print text
 
-    def convert(self, oeb_book, output_path, input_plugin, opts, log):
-        from calibre.ebooks.oeb.base import OEB_IMAGES
-        from calibre.utils.zipfile import ZipFile
-        from lxml import etree
-
-        with TemporaryDirectory('_txtz_output') as tdir:
-            # TXT
-            txt_name = 'index.txt'
-            if opts.txt_output_formatting.lower() == 'textile':
-                txt_name = 'index.text'
-            with TemporaryFile(txt_name) as tf:
-                TXTOutput.convert(self, oeb_book, tf, input_plugin, opts, log)
-                shutil.copy(tf, os.path.join(tdir, txt_name))
-
-            # Images
-            for item in oeb_book.manifest:
-                if item.media_type in OEB_IMAGES:
-                    if hasattr(self.writer, 'images'):
-                        path = os.path.join(tdir, 'images')
-                        if item.href in self.writer.images:
-                            href = self.writer.images[item.href]
-                        else:
-                            continue
-                    else:
-                        path = os.path.join(tdir, os.path.dirname(item.href))
-                        href = os.path.basename(item.href)
-                    if not os.path.exists(path):
-                        os.makedirs(path)
-                    with open(os.path.join(path, href), 'wb') as imgf:
-                        imgf.write(item.data)
-
-            # Metadata
-            with open(os.path.join(tdir, 'metadata.opf'), 'wb') as mdataf:
-                mdataf.write(etree.tostring(oeb_book.metadata.to_opf1()))
-
-            txtz = ZipFile(output_path, 'w')
-            txtz.add_dir(tdir)
+        return lxml.etree.tostring(doc, encoding='unicode',pretty_print=True)
