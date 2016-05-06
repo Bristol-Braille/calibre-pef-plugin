@@ -10,6 +10,7 @@ import lxml.etree as etree
 import lxml.builder    
 
 
+from calibre.ebooks.txt.newlines import specified_newlines, TxtNewlines
 from calibre.customize.conversion import OutputFormatPlugin, \
     OptionRecommendation
 from calibre.ptempfile import TemporaryDirectory, TemporaryFile
@@ -37,6 +38,9 @@ class PEFOutput(OutputFormatPlugin):
         OptionRecommendation(name='inline_toc',
             recommended_value=False, level=OptionRecommendation.LOW,
             help=_('Add Table of Contents to beginning of the book.')),
+        OptionRecommendation(name='num_rows',
+            recommended_value=4, level=OptionRecommendation.LOW,
+            help=_('The maximum number of rows per page.')),
         OptionRecommendation(name='max_line_length',
             recommended_value=40, level=OptionRecommendation.LOW,
             help=_('The maximum number of characters per line. This splits on '
@@ -77,7 +81,6 @@ class PEFOutput(OutputFormatPlugin):
     def convert(self, oeb_book, output_path, input_plugin, opts, log):
         from calibre.ebooks.txt.txtml import TXTMLizer
         from calibre.utils.cleantext import clean_ascii_chars
-        from calibre.ebooks.txt.newlines import specified_newlines, TxtNewlines
 
         from calibre.rpdb import set_trace
 #        set_trace()
@@ -98,7 +101,8 @@ class PEFOutput(OutputFormatPlugin):
         txt = specified_newlines(TxtNewlines(opts.newline).newline, txt)
         txt = txt.encode(opts.txt_output_encoding, 'replace')
         
-        pef = self.get_pef(txt, TxtNewlines(opts.newline).newline)
+        log.debug('\tGenerating PEF...')
+        pef = self.get_pef(txt, opts)
 
         if not os.path.exists(os.path.dirname(output_path)) and os.path.dirname(output_path) != '':
             os.makedirs(os.path.dirname(output_path))
@@ -125,7 +129,8 @@ class PEFOutput(OutputFormatPlugin):
     def convert_to_pef(alphas):
         return map(PEFOutput.alpha_to_pef, alphas)
 
-    def get_pef(self, txt, newline_char):
+    def get_pef(self, txt, opts):
+        newline_char = TxtNewlines(opts.newline).newline
         # setup PEF doc
         pef = etree.Element('pef')
         doc = etree.ElementTree(pef)
@@ -136,7 +141,7 @@ class PEFOutput(OutputFormatPlugin):
         page_open = False
         rows = 0
         for text in txt.split(newline_char):
-            if rows % 4 == 0:
+            if rows % opts.num_rows == 0:
                 page = etree.SubElement(section, 'page')
             try:
                 row = etree.SubElement(page, 'row')
