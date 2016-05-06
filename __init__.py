@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 
-__license__ = 'GPL 3'
-__copyright__ = '2009, John Schember <john@nachtimwald.com>'
-__docformat__ = 'restructuredtext en'
+"""
+based on the TXTOutput plugin for Calibre by John Schember <john@nachtimwald.com
+"""
 
 import os
 import shutil
 import lxml.etree as etree
 import lxml.builder    
+import re
 
 
+from calibre.rpdb import set_trace
 from calibre.ebooks.txt.newlines import specified_newlines, TxtNewlines
 from calibre.customize.conversion import OutputFormatPlugin, \
     OptionRecommendation
@@ -82,8 +84,6 @@ class PEFOutput(OutputFormatPlugin):
         from calibre.ebooks.txt.txtml import TXTMLizer
         from calibre.utils.cleantext import clean_ascii_chars
 
-        from calibre.rpdb import set_trace
-#        set_trace()
 
         if opts.txt_output_formatting.lower() == 'markdown':
             from calibre.ebooks.txt.markdownml import MarkdownMLizer
@@ -95,14 +95,18 @@ class PEFOutput(OutputFormatPlugin):
             self.writer = TXTMLizer(log)
 
         txt = self.writer.extract_content(oeb_book, opts)
+
         txt = clean_ascii_chars(txt)
 
         log.debug('\tReplacing newlines with selected type...')
         txt = specified_newlines(TxtNewlines(opts.newline).newline, txt)
         txt = txt.encode(opts.txt_output_encoding, 'replace')
+
+        log.debug('\tStripping final newline characters')
+        txt = re.sub(TxtNewlines(opts.newline).newline + '*$', '', txt)
         
         log.debug('\tGenerating PEF...')
-        pef = self.get_pef(txt, opts)
+        pef = self.create_pef(txt, opts, log)
 
         if not os.path.exists(os.path.dirname(output_path)) and os.path.dirname(output_path) != '':
             os.makedirs(os.path.dirname(output_path))
@@ -110,6 +114,33 @@ class PEFOutput(OutputFormatPlugin):
         import codecs
         fh = codecs.open(output_path, "w", "utf-8")
         fh.write(pef)
+
+    def create_pef(self, txt, opts, log):
+        newline_char = TxtNewlines(opts.newline).newline
+        # setup PEF doc
+        pef = etree.Element('pef')
+        doc = etree.ElementTree(pef)
+        body = etree.SubElement(pef, 'body')
+        volume = etree.SubElement(body, 'volume')
+        section = etree.SubElement(volume, 'section')
+       
+        page_open = False
+        rows = 0
+        for line in txt.split(newline_char):
+            log.debug('got new line [%s]' % line)
+            if rows % opts.num_rows == 0:
+                page = etree.SubElement(section, 'page')
+            try:
+                row = etree.SubElement(page, 'row')
+                stripped = line.strip()
+                pef = PEFOutput.convert_to_pef(stripped)
+                row.text = ''.join(pef)
+                rows += 1
+            except ValueError as e:
+                print e
+                print text
+
+        return lxml.etree.tostring(doc, encoding='unicode',pretty_print=True)
 
     # convert a single alpha, digit or some punctuation to 6 pin braille
     # http://en.wikipedia.org/wiki/Braille_ASCII#Braille_ASCII_values
@@ -129,28 +160,3 @@ class PEFOutput(OutputFormatPlugin):
     def convert_to_pef(alphas):
         return map(PEFOutput.alpha_to_pef, alphas)
 
-    def get_pef(self, txt, opts):
-        newline_char = TxtNewlines(opts.newline).newline
-        # setup PEF doc
-        pef = etree.Element('pef')
-        doc = etree.ElementTree(pef)
-        body = etree.SubElement(pef, 'body')
-        volume = etree.SubElement(body, 'volume')
-        section = etree.SubElement(volume, 'section')
-       
-        page_open = False
-        rows = 0
-        for text in txt.split(newline_char):
-            if rows % opts.num_rows == 0:
-                page = etree.SubElement(section, 'page')
-            try:
-                row = etree.SubElement(page, 'row')
-                stripped = text.strip()
-                pef = PEFOutput.convert_to_pef(stripped)
-                row.text = ''.join(pef)
-                rows += 1
-            except ValueError as e:
-                print e
-                print text
-
-        return lxml.etree.tostring(doc, encoding='unicode',pretty_print=True)

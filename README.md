@@ -13,11 +13,17 @@ This sometimes needs to be run multiple times to correctly install the plugin.
 
 ebook-convert something.epub something.pef
 
+# todo
+
+* pef header
+
 # useful links
 
 * https://manual.calibre-ebook.com/creating_plugins.html
-* based off the KFX output plugin http://www.mobileread.com/forums/showthread.php?t=272407 by J Howell
+* based on the TXTOutput plugin for Calibre by John Schember <john@nachtimwald.com
 
 # debugging
 
 https://manual.calibre-ebook.com/develop.html#using-the-python-debugger-as-a-remote-debugger
+
+unfortunately as it is now, it doesn't show any program file context (list doesn't work)
