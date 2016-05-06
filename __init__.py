@@ -42,18 +42,19 @@ class PEFOutput(OutputFormatPlugin):
             help=_('Add Table of Contents to beginning of the book.')),
         OptionRecommendation(name='num_rows',
             recommended_value=4, level=OptionRecommendation.LOW,
-            help=_('The maximum number of rows per page.')),
+            help=_('The maximum number of rows per page, defaults to 4.')),
         OptionRecommendation(name='max_line_length',
             recommended_value=40, level=OptionRecommendation.LOW,
             help=_('The maximum number of characters per line. This splits on '
             'the first space before the specified value. If no space is found '
             'the line will be broken at the space after and will exceed the '
             'specified value. Also, there is a minimum of 25 characters. '
-            'Use 0 to disable line splitting.')),
+            'Use 0 to disable line splitting. Default is 40.')),
         OptionRecommendation(name='force_max_line_length',
             recommended_value=True, level=OptionRecommendation.LOW,
             help=_('Force splitting on the max-line-length value when no space '
-            'is present. Also allows max-line-length to be below the minimum')),
+            'is present. Also allows max-line-length to be below the minimum. '
+            'Default true.')),
         OptionRecommendation(name='txt_output_formatting',
              recommended_value='plain',
              choices=['plain', 'markdown', 'textile'],

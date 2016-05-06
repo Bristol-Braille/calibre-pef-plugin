@@ -1,29 +1,23 @@
-# getting started
+# Install the plugin
 
-I wanted a new version of calibre to make use of the remote debugging.
-It was too hard to install from source (dependencies) so I downloaded the binary package.
+    calibre-customize -b path_to_plugin_dir
 
-# install the plugin
+# Converting a book
 
-calibre-customize -b path_to_plugin_dir
+    ebook-convert something.epub something.pef
+    ebook-convert something.txt something.pef 
 
-This sometimes needs to be run multiple times to correctly install the plugin.
+# Options
 
-# converting a book
+Look for the section on output options:
 
-ebook-convert something.epub something.pef
+    ebook-convert -h
 
-# todo
+In particular:
+
+* --num-rows defaults to 4 and is number of rows per page
+* --max-line-length defaults to 40 and is the maximum number of cells per row
+
+# TODO
 
 * pef header
-
-# useful links
-
-* https://manual.calibre-ebook.com/creating_plugins.html
-* based on the TXTOutput plugin for Calibre by John Schember <john@nachtimwald.com
-
-# debugging
-
-https://manual.calibre-ebook.com/develop.html#using-the-python-debugger-as-a-remote-debugger
-
-unfortunately as it is now, it doesn't show any program file context (list doesn't work)
