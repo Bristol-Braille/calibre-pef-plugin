@@ -10,6 +10,9 @@ import lxml.etree as etree
 import lxml.builder    
 import re
 
+# namespaces
+PEFNS = "http://www.daisy.org/ns/2008/pef" 
+DCNS = "http://purl.org/dc/elements/1.1/"
 
 from calibre.ebooks.metadata.meta import get_metadata, set_metadata
 from calibre.rpdb import set_trace
@@ -121,12 +124,10 @@ class PEFOutput(OutputFormatPlugin):
 
     def create_pef(self, txt, opts, metadata):
         newline_char = TxtNewlines(opts.newline).newline
-        # namespace
-        DCNS = "http://purl.org/dc/elements/1.1/"
         
         # setup PEF doc
         # http://files.pef-format.org/specifications/pef-2008-1/pef-specification.html
-        pef = etree.Element('pef', nsmap = {None: "http://www.daisy.org/ns/2008/pef" })
+        pef = etree.Element('pef', nsmap = {None: PEFNS })
         tree = etree.ElementTree(pef)
 
         pef.set("version", "2008-1")

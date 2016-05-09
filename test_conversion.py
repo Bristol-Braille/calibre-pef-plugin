@@ -13,6 +13,10 @@ pef_file = "text.pef"
 rows_per_page = 4
 chars_per_row = 40
 
+# namespaces
+PEFNS = "http://www.daisy.org/ns/2008/pef" 
+DCNS = "http://purl.org/dc/elements/1.1/"
+
 
 class TestConversion(unittest.TestCase):
 
@@ -65,8 +69,8 @@ class TestConversion(unittest.TestCase):
     def pef_test(self, pef_file, test_content):
         tree = etree.parse(pef_file)
         root = tree.getroot()
-        pages = list(root.iter('page'))
-        rows = list(root.iter('row'))
+        pages = list(root.iter('{%s}page' % PEFNS))
+        rows = list(root.iter('{%s}row' % PEFNS))
 
         # basic checks
         self.assertEqual(len(rows), len(test_content))
