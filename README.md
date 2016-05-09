@@ -1,3 +1,11 @@
+# PEF converter plugin for Calibre
+
+A plugin for the open source ebook library and converter [Calibre](https://calibre-ebook.com/)
+
+Converts any book format that Calibre supports to the [PEF format](http://files.pef-format.org/specifications/pef-2008-1/pef-specification.html)
+
+This plugin is based on the [TXTOutput](https://github.com/kovidgoyal/calibre/blob/ac8363713b8d82b33516c3806fc142bc04b5ace6/src/calibre/ebooks/conversion/plugins/txt_output.py) plugin by John Schember.
+
 # Install the plugin
 
     calibre-customize -b path_to_plugin_dir

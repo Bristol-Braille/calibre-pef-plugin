@@ -11,6 +11,7 @@ import lxml.builder
 import re
 
 
+from calibre.ebooks.metadata.meta import get_metadata, set_metadata
 from calibre.rpdb import set_trace
 from calibre.ebooks.txt.newlines import specified_newlines, TxtNewlines
 from calibre.customize.conversion import OutputFormatPlugin, \
@@ -84,7 +85,8 @@ class PEFOutput(OutputFormatPlugin):
     def convert(self, oeb_book, output_path, input_plugin, opts, log):
         from calibre.ebooks.txt.txtml import TXTMLizer
         from calibre.utils.cleantext import clean_ascii_chars
-
+        
+        self.log = log
 
         if opts.txt_output_formatting.lower() == 'markdown':
             from calibre.ebooks.txt.markdownml import MarkdownMLizer
@@ -107,7 +109,8 @@ class PEFOutput(OutputFormatPlugin):
         txt = re.sub(TxtNewlines(opts.newline).newline + '*$', '', txt)
         
         log.debug('\tGenerating PEF...')
-        pef = self.create_pef(txt, opts, log)
+        metadata = oeb_book.metadata
+        pef = self.create_pef(txt, opts, metadata)
 
         if not os.path.exists(os.path.dirname(output_path)) and os.path.dirname(output_path) != '':
             os.makedirs(os.path.dirname(output_path))
@@ -116,48 +119,79 @@ class PEFOutput(OutputFormatPlugin):
         fh = codecs.open(output_path, "w", "utf-8")
         fh.write(pef)
 
-    def create_pef(self, txt, opts, log):
+    def create_pef(self, txt, opts, metadata):
         newline_char = TxtNewlines(opts.newline).newline
+        # namespace
+        DCNS = "http://purl.org/dc/elements/1.1/"
+        
         # setup PEF doc
-        pef = etree.Element('pef')
-        doc = etree.ElementTree(pef)
+        # http://files.pef-format.org/specifications/pef-2008-1/pef-specification.html
+        pef = etree.Element('pef', nsmap = {None: "http://www.daisy.org/ns/2008/pef" })
+        tree = etree.ElementTree(pef)
+
+        pef.set("version", "2008-1")
+
+        head = etree.SubElement(pef, 'head')
+        meta = etree.SubElement(head, 'meta', nsmap = {"dc" : DCNS})
+
+        dc_format = etree.SubElement(meta, '{%s}format' % DCNS)
+        dc_format.text = "application/x-pef+xml"
+
+        dc_ident = etree.SubElement(meta, "{%s}identifier" % DCNS)
+        dc_ident.text = "org.pef-format.00002"
+
+        if len(metadata.title):
+            title = metadata.title[0].value
+            dc_title = etree.SubElement(meta, '{%s}title' % DCNS)
+            dc_title.text = title
+
+        if len(metadata.author):
+            author = metadata.author[0].value
+            dc_creator = etree.SubElement(meta, '{%s}creator' % DCNS)
+            dc_creator.text = author
+
         body = etree.SubElement(pef, 'body')
+
         volume = etree.SubElement(body, 'volume')
+        volume.set("cols", str(opts.max_line_length))
+        volume.set("rows", str(opts.num_rows))
+
         section = etree.SubElement(volume, 'section')
        
         page_open = False
         rows = 0
+        self.bad_chars = {}
         for line in txt.split(newline_char):
-            log.debug('got new line [%s]' % line)
+            self.log.debug('got new line [%s]' % line)
             if rows % opts.num_rows == 0:
                 page = etree.SubElement(section, 'page')
             try:
                 row = etree.SubElement(page, 'row')
                 stripped = line.strip()
-                pef = PEFOutput.convert_to_pef(stripped)
+                pef = self.convert_to_pef(stripped)
                 row.text = ''.join(pef)
                 rows += 1
             except ValueError as e:
                 print e
                 print text
 
-        return lxml.etree.tostring(doc, encoding='unicode',pretty_print=True)
+        return lxml.etree.tostring(tree, xml_declaration=True, encoding='UTF-8',pretty_print=True)
 
     # convert a single alpha, digit or some punctuation to 6 pin braille
     # http://en.wikipedia.org/wiki/Braille_ASCII#Braille_ASCII_values
-    @staticmethod
-    def alpha_to_pef(alpha):
+    def alpha_to_pef(self, alpha):
         mapping = " A1B'K2L@CIF/MSP\"E3H9O6R^DJG>NTQ,*5<-U8V.%[$+X!&;:4\\0Z7(_?W]#Y)="
         alpha = alpha.upper()
         try:
             pin_num = mapping.index(alpha)
             return unichr(pin_num+10240)
         except ValueError as e:
-            print("problem converting [%s] to braille pic" % alpha)
+            if not self.bad_chars.has_key(alpha):
+                self.log.info("can't convert [%s] to braille" % alpha)
+                self.bad_chars[alpha] = True
             return unichr(10240)
 
     # convert a list of alphas to pef unicode
-    @staticmethod
-    def convert_to_pef(alphas):
-        return map(PEFOutput.alpha_to_pef, alphas)
+    def convert_to_pef(self, alphas):
+        return map(self.alpha_to_pef, alphas)
 
