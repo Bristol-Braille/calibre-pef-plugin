@@ -23,6 +23,7 @@ Look for the section on output options:
 
 In particular:
 
+* --ueb2 use liblouis to convert to contracted grade 2
 * --num-rows defaults to 4 and is number of rows per page
 * --max-line-length defaults to 40 and is the maximum number of cells per row
 
