@@ -74,7 +74,6 @@ class TestConversion(unittest.TestCase):
         grade2 = []
         for line in test_content:
             grade2.append(louis.translateString(['en-GB-g2.ctb'], line))
-        import ipdb; ipdb.set_trace()
         os.system(ebook_convert + " " + test_text_file + " " + pef_file + " --ueb2")
         self.assertTrue(os.path.exists(pef_file))
         self.pef_test_grade2(pef_file, grade2)
@@ -110,7 +109,6 @@ class TestConversion(unittest.TestCase):
         rows = list(root.iter('{%s}row' % PEFNS))
 
         # basic checks
-        import ipdb; ipdb.set_trace()
         self.assertEqual(len(rows), len(test_content))
         self.assertEqual(len(pages), test_book_lines / rows_per_page)
 
