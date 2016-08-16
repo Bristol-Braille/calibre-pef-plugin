@@ -27,6 +27,13 @@ In particular:
 * --num-rows defaults to 4 and is number of rows per page
 * --max-line-length defaults to 40 and is the maximum number of cells per row
 
+# Dependencies
+
+If you want to use liblouis to contract the braille, you will need to install
+the library and the python bindings.
+
+    https://github.com/liblouis/liblouis
+
 # TODO
 
 * more testing
