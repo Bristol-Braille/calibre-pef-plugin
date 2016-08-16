@@ -41,6 +41,9 @@ class PEFOutput(OutputFormatPlugin):
             level=OptionRecommendation.LOW,
             help=_('Specify the character encoding of the output document. ' \
             'The default is utf-8.')),
+        OptionRecommendation(name='ueb2',
+            recommended_value=False, level=OptionRecommendation.LOW,
+            help=_('Convert to Unified English Braille Grade 2')),
         OptionRecommendation(name='inline_toc',
             recommended_value=False, level=OptionRecommendation.LOW,
             help=_('Add Table of Contents to beginning of the book.')),
@@ -107,6 +110,16 @@ class PEFOutput(OutputFormatPlugin):
         log.debug('\tReplacing newlines with selected type...')
         txt = specified_newlines(TxtNewlines(opts.newline).newline, txt)
         txt = txt.encode(opts.txt_output_encoding, 'replace')
+
+        if opts.ueb2:
+            import louis
+            newline_char = TxtNewlines(opts.newline).newline
+            grade2 = ""
+            for line in txt.split(newline_char):
+                grade2 += louis.translateString(['en-GB-g2.ctb'], line)
+                grade2 += "\n"
+            log.debug(grade2)
+            txt = grade2
 
         log.debug('\tStripping final newline characters')
         txt = re.sub(TxtNewlines(opts.newline).newline + '*$', '', txt)

@@ -1,6 +1,7 @@
 import unittest
 import os
 import lxml.etree as etree
+import louis
 
 ebook_convert = "../calibre/ebook-convert"
 calibre_customize = "../calibre/calibre-customize"
@@ -51,11 +52,32 @@ class TestConversion(unittest.TestCase):
                 self.assertGreater(len(line), chars_per_row - 5)
         return content
 
+    def create_text_file_for_grade2(self):
+        content = []
+        with open(test_text_file, 'w') as fh:
+            for i in range(test_book_lines):
+                line = "the in and of how bigger what when why\n"
+                fh.write(line)
+                content.append(line)
+                self.assertLess(len(line), chars_per_row)
+        return content
+
     def test_text_conversion(self):
         test_content = self.create_text_file()
         os.system(ebook_convert + " " + test_text_file + " " + pef_file)
         self.assertTrue(os.path.exists(pef_file))
         self.pef_test(pef_file, test_content)
+
+    def test_grade2_text_conversion(self):
+        #test_content = self.create_text_file()
+        test_content = self.create_text_file_for_grade2()
+        grade2 = []
+        for line in test_content:
+            grade2.append(louis.translateString(['en-GB-g2.ctb'], line))
+        import ipdb; ipdb.set_trace()
+        os.system(ebook_convert + " " + test_text_file + " " + pef_file + " --ueb2")
+        self.assertTrue(os.path.exists(pef_file))
+        self.pef_test_grade2(pef_file, grade2)
 
     def test_epub_conversion(self):
         test_content = self.create_text_file()
@@ -81,6 +103,21 @@ class TestConversion(unittest.TestCase):
             for i in range(len(pef.text)):
                 self.assertEqual(TestConversion.unicode_to_alpha(pef.text[i]), text[i].upper())
                 
+    def pef_test_grade2(self, pef_file, test_content):
+        tree = etree.parse(pef_file)
+        root = tree.getroot()
+        pages = list(root.iter('{%s}page' % PEFNS))
+        rows = list(root.iter('{%s}row' % PEFNS))
+
+        # basic checks
+        import ipdb; ipdb.set_trace()
+        self.assertEqual(len(rows), len(test_content))
+        self.assertEqual(len(pages), test_book_lines / rows_per_page)
+
+        # check the encoding worked
+        for pef, text in zip(rows, test_content):
+            for i in range(len(pef.text)):
+                self.assertEqual(TestConversion.unicode_to_alpha(pef.text[i]), text[i].upper())
 
 if __name__ == '__main__':
     unittest.main()
